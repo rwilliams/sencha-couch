@@ -1,7 +1,0 @@
-{
-  "env" : {
-    "local" : {
-      "db" : "http://localhost:5984/sencha_couch_test"
-    }
-  }
-}

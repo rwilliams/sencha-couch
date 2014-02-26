@@ -1,1 +1,0 @@
-../../../lib/sencha-couch.js

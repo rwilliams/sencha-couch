@@ -12,7 +12,7 @@ Ext.define('CouchDB.data.JsonWriter', {
     getRecordData: function(record, operation) {
         var data;
         data = record.getWriteData();
-
+    
         
         // Remove falsey _id and _rev properties before writing the object.  This is necessary
         // when POSTing a new object to CouchDB because Ext seems to insist on always writing
@@ -23,9 +23,9 @@ Ext.define('CouchDB.data.JsonWriter', {
         if (!data._rev) {
             delete data._rev;
         }
-
+    
         data.type = Ext.getClassName(record);
-
+    
         return data;
     }
 });
