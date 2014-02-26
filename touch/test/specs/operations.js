@@ -10,9 +10,7 @@ describe("CRUD Operations", function() {
           name: 'age',
           type: 'int'
         }],
-          associations: [
-              {type: 'hasMany', model: 'Dog',    name: 'dogs'}
-          ],
+        hasMany: {inner:true,model: 'Dog', name: 'dogs'},
         proxy: {
           type: 'couchdb',
           databaseUrl: 'http://localhost:3000',
@@ -24,7 +22,7 @@ describe("CRUD Operations", function() {
   });
 
     Ext.define('Dog', {
-        extend: 'Ext.data.Model',
+        extend: 'CouchDB.data.NestedModel',
         config: {
             fields: [{
                 name: 'name',
@@ -33,7 +31,23 @@ describe("CRUD Operations", function() {
                 name: 'color',
                 type: 'string'
             }],
-            belongsTo: 'Person'
+            belongsTo: 'Person',
+            hasMany: {inner:true,model: 'Dog', name: 'dogs'}
+        }
+    });
+
+    Ext.define('Cat', {
+        extend: 'CouchDB.data.NestedModel',
+        config: {
+            fields: [{
+                name: 'name',
+                type: 'string'
+            },{
+                name: 'color',
+                type: 'string'
+            }],
+
+            belongsTo: 'Dog'
         }
     });
   
@@ -42,18 +56,20 @@ describe("CRUD Operations", function() {
     model: 'Person'
   });
     beforeEach(function(done) {
-        var db = new PouchDB('http://localhost:3000/sencha_couch_test');
-        db.put({
-            "_id": "_design/test",
-            "language": "javascript",
-            "views": {
-                "people": {
-                    "map": "function(doc) { emit(doc._id, null); };"
+        PouchDB.destroy('http://localhost:3000/sencha_couch_test', function(err, info) {
+            var db = new PouchDB('http://localhost:3000/sencha_couch_test');
+            db.put({
+                "_id": "_design/test",
+                "language": "javascript",
+                "views": {
+                    "people": {
+                        "map": "function(doc) { emit(doc._id, null); };"
+                    }
                 }
-            }
-        }, function(err, response) {
-            expect(err).toBeNull();
-            done();
+            }, function(err, response) {
+                expect(err).toBeNull();
+                done();
+            });
         });
     });
 
@@ -205,12 +221,13 @@ describe("CRUD Operations", function() {
 
   it('can read and write nested data',function(done){
       var person = new Person({ name: 'Ralph', age: 30 }),
-          dog = new Dog({name:'Fido',color:'Yellow'});
+          dog = new Dog({color:'Yellow',name:'Fido'});
       person.dogs().add(dog);
       person.save({
           callback: function(person,request){
               Person.load(person.getId(),{
                   callback: function(person, operation) {
+                     //debugger;
                      expect(person.dogs().first().get('color')).toBe('Yellow');
                      expect(person.dogs().first().get('name')).toBe('Fido');
                      done();
