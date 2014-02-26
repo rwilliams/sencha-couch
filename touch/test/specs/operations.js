@@ -2,7 +2,7 @@
 describe("CRUD Operations", function() {
   Ext.define('Person', {
     extend: 'CouchDB.data.Model',
-    config: {
+      config: {
         fields: [{
           name: 'name',
           type: 'string'
@@ -10,7 +10,9 @@ describe("CRUD Operations", function() {
           name: 'age',
           type: 'int'
         }],
-
+          associations: [
+              {type: 'hasMany', model: 'Dog',    name: 'dogs'}
+          ],
         proxy: {
           type: 'couchdb',
           databaseUrl: 'http://localhost:3000',
@@ -19,8 +21,21 @@ describe("CRUD Operations", function() {
           viewName: 'people'
         }
     }
-
   });
+
+    Ext.define('Dog', {
+        extend: 'Ext.data.Model',
+        config: {
+            fields: [{
+                name: 'name',
+                type: 'string'
+            },{
+                name: 'color',
+                type: 'string'
+            }],
+            belongsTo: 'Person'
+        }
+    });
   
   var store = Ext.create('Ext.data.Store',{
     storeId: 'testStore',
@@ -83,7 +98,7 @@ describe("CRUD Operations", function() {
       }
     });
   });
-  
+
   it('can update an existing Model object', function(done) {
     var id;
     var rev;
@@ -150,7 +165,7 @@ describe("CRUD Operations", function() {
          }
      });
   });
-  
+
   it('can load all Model objects using a Store', function(done) {
     var person1 = new Person({ name: 'Ralph', age: 33 }),
          person2 = Ext.create('Person',{ name: 'Jane', age: 43 }),
@@ -186,5 +201,23 @@ describe("CRUD Operations", function() {
           done();
       }
     };
+  });
+
+  it('can read and write nested data',function(done){
+      var person = new Person({ name: 'Ralph', age: 30 }),
+          dog = new Dog({name:'Fido',color:'Yellow'});
+      person.dogs().add(dog);
+      person.save({
+          callback: function(person,request){
+              Person.load(person.getId(),{
+                  callback: function(person, operation) {
+                     expect(person.dogs().first().get('color')).toBe('Yellow');
+                     expect(person.dogs().first().get('name')).toBe('Fido');
+                     done();
+                  }
+              });
+              //done();
+          }
+      });
   });
 });

@@ -35,6 +35,12 @@ Ext.define('CouchDB.data.Writer', {
         //   }
         data.type = Ext.getClassName(record);
 
-        return data;
+        if (record.writeStructuredData) {
+            return record.getWriteData();
+        } else {
+            return data
+        }
+
+        //return data;
     }
 });
