@@ -11,31 +11,11 @@ CouchDB Compatible databases(that i know of):
 - PouchDB
 - Couchbase Lite
 
-**NOTE**: SenchaCouch has been tested with Ext JS 4.2.2 and Sencha Touch 2.3.1
+This repository has been moved to the following two repo's
 
-Running The Specs
------------------
-Intructions coming soon...
-I use pouchdb and pouchdb-server on node.js
-
-Acknowledgements
-----------------
-- Steven R. Farley's work on the original SenchaCouch https://github.com/srfarley/sencha-couch
-
-- Peter Müller's Sencha forum post and work on platform dernormalization for Sencha Touch and ExtJS.
-  http://www.sencha.com/forum/showthread.php?127547-Sencha-Platform-denormalized-Data-patch
+[**Sencha ExtJS Version**](https://github.com/rwilliams/sencha-couchdb-extjs)
 
 
+[**Sencha Touch Version**](https://github.com/rwilliams/sencha-couchdb-touch)
 
-License
--------
 
-Need to figure this out, it's probably going to be GPL'd if you're using GPL versions of Sench Touch
-or ExtJS otherwise MIT or Apache except for the code taken directly from the Sencha sources
-
-TODO
-----
-
-Add more exhaustive test suite.
-
-Seperate nested data code and CouchDB specific code so this can be applied to MongoDB etc.
