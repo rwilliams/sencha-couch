@@ -1,4 +1,13 @@
 describe("CRUD Operations", function () {
+    var store,
+        dbUrl,
+        dbName;
+
+    //Set your database and database url here
+    //
+    dbUrl = 'http://localhost:3000';
+    dbName = 'sencha_couch_test';
+
     Ext.define('Person', {
         extend: 'CouchDB.data.Model',
         config: {
@@ -15,8 +24,8 @@ describe("CRUD Operations", function () {
             hasMany: {inner: true, model: 'Dog', name: 'dogs'},
             proxy: {
                 type: 'couchdb',
-                databaseUrl: 'http://localhost:3000',
-                databaseName: 'sencha_couch_test',
+                databaseUrl: dbUrl,
+                databaseName: dbName,
                 designName: 'test',
                 viewName: 'people'
             }
@@ -26,6 +35,7 @@ describe("CRUD Operations", function () {
     Ext.define('Dog', {
         extend: 'CouchDB.data.NestedModel',
         config: {
+            validations: [{type: 'presence', field: 'name'}],
             fields: [
                 {
                     name: 'name',
@@ -41,31 +51,17 @@ describe("CRUD Operations", function () {
         }
     });
 
-    Ext.define('Cat', {
-        extend: 'CouchDB.data.NestedModel',
-        config: {
-            fields: [
-                {
-                    name: 'name',
-                    type: 'string'
-                },
-                {
-                    name: 'color',
-                    type: 'string'
-                }
-            ],
-
-            belongsTo: 'Dog'
-        }
-    });
-
-    var store = Ext.create('Ext.data.Store', {
+    store = Ext.create('Ext.data.Store', {
         storeId: 'testStore',
         model: 'Person'
     });
+
     beforeEach(function (done) {
-        PouchDB.destroy('http://localhost:3000/sencha_couch_test', function (err, info) {
-            var db = new PouchDB('http://localhost:3000/sencha_couch_test');
+        var myDbName = dbName,
+            myDbUrl = dbUrl;
+
+        PouchDB.destroy(myDbUrl + myDbName, function (err, info) {
+            var db = new PouchDB(myDbUrl + myDbName);
             db.put({
                 "_id": "_design/test",
                 "language": "javascript",
@@ -82,7 +78,7 @@ describe("CRUD Operations", function () {
     });
 
     afterEach(function (done) {
-        PouchDB.destroy('http://localhost:3000/sencha_couch_test', function (err, info) {
+        PouchDB.destroy(dbUrl + dbName, function (err, info) {
             expect(err).toBeNull();
             done();
         });
@@ -244,5 +240,68 @@ describe("CRUD Operations", function () {
                 //done();
             }
         });
+    });
+
+    it('can have parent document be saved by calling save on a new(phantom) nested object', function (done) {
+        var person = new Person({ name: 'Ralph', age: 30 }),
+            dog = new Dog({color: 'Yellow', name: 'Fido'});
+
+        person.dogs().add(dog);
+
+        //in order to save a phantom record innerOf must be set manually. I can't figure out a good way to do this in the lib itself.
+        dog.innerOf = person;
+        dog.save({
+            callback: function (person, request) {
+                Person.load(person.getId(), {
+                    callback: function (person, operation) {
+                        //debugger;
+                        expect(person.dogs().first().get('color')).toBe('Yellow');
+                        expect(person.dogs().first().get('name')).toBe('Fido');
+                        done();
+                    }
+                });
+                //done();
+            }
+        });
+    });
+
+    it('can have parent document be saved by calling nested object', function (done) {
+        var person = new Person({ name: 'Ralph', age: 30 }),
+            dog = new Dog({color: 'Yellow', name: 'Fido'});
+
+        person.dogs().add(dog);
+
+        person.save({
+            callback: function (person, request) {
+                Person.load(person.getId(), {
+                    callback: function (person, operation) {
+                        dog = null;
+                        //debugger;
+                        dog = person.dogs().first();
+                        dog.save({
+                            callback: function(person, operation){
+                                expect(person.dogs().first().get('color')).toBe('Yellow');
+                                expect(person.dogs().first().get('name')).toBe('Fido');
+                                done();
+                            }
+                        });
+
+                    }
+                });
+            }
+        });
+    });
+
+    it('will be marked invalid if nested data is invalid and valid if the nested data is valid', function (done) {
+        var personInvalid = new Person({ name: 'InValid', age: 35 }),
+            personValid = new Person({ name: 'Valid', age: 30 }),
+            dogValid = new Dog({color: 'Yellow',name:'valid'}),
+            dogInvalid = new Dog({color: 'Yellow',name:''});
+
+        personInvalid.dogs().add(dogInvalid);
+        personValid.dogs().add(dogValid);
+        expect(personInvalid.isValid()).toBeFalsy();
+        expect(personValid.isValid()).toBeTruthy();
+        done();
     });
 });
