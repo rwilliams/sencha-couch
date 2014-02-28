@@ -275,8 +275,7 @@ describe("CRUD Operations", function () {
             callback: function (person, request) {
                 Person.load(person.getId(), {
                     callback: function (person, operation) {
-                        dog = null;
-                        //debugger;
+
                         dog = person.dogs().first();
                         dog.save({
                             callback: function(person, operation){

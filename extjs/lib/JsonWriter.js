@@ -1,31 +1,79 @@
-/**
- * An overridden JsonWriter implementation that allows the Model to define how data should be written.
- *
- * If the Model being written has 'writeStructuredData' set to true, it will allow the Model to determine the data
- * format being sent during create and update operations. MC.data.Model provides a default implementation but
- * any Model can then override this behavior to handle any non-standard boundary conditions where necessary.
- */
-Ext.define('CouchDB.data.JsonWriter', {
+Ext.define('CouchDB.data.Writer', {
     extend: 'Ext.data.writer.Json',
     alias: 'writer.couchdb',
 
+    allowSingle: true,
+    encode: false,
+    writeAllFields: true,
+    root: undefined,
     getRecordData: function(record, operation) {
-        var data;
-        data = record.getWriteData();
-    
-        
-        // Remove falsey _id and _rev properties before writing the object.  This is necessary
-        // when POSTing a new object to CouchDB because Ext seems to insist on always writing
-        // these two properties, even if they are not initially defined on the object.
-        if (!data._id) {
-            delete data._id;
+        var isPhantom = record.phantom === true,
+            writeAll = this.writeAllFields || isPhantom,
+            fields = record.fields,
+            fieldItems = fields.items,
+            data = {},
+            clientIdProperty = record.clientIdProperty,
+            changes,
+            field,
+            key,
+            mappedIdProperty,
+            f, fLen;
+
+        if (writeAll) {
+            fLen = fieldItems.length;
+
+            for (f = 0; f < fLen; f++) {
+                field = fieldItems[f];
+                if (field.persist) {
+                    this.writeValue(data, field, record);
+                }
+            }
+
+            Ext.iterate(record.associations.map, function (name, association) {
+                if (association.inner === true) {
+                    var innerStore = record[name]();
+                    if (innerStore.getCount() > 0) {
+
+                        data[name] = [];
+                        innerStore.each(function (innerRecord) {
+                            var innerData = this.getRecordData(innerRecord);
+                            // Remove foreign keys that aren't needed with denormalized databases
+                            innerRecord.associations.each(function (association) {
+                                delete innerData[association._foreignKey];
+                            });
+                            data[name].push(innerData);
+
+                        }, this);
+                    }
+                }
+            }, this);
+
+        } else if (operation.action === 'destroy') {
+            this.writeValue(data, record.idField, record);
+        } else {
+            // Only write the changes
+            changes = record.getChanges();
+            for (key in changes) {
+                if (changes.hasOwnProperty(key)) {
+                    field = fields.get(key);
+                    if (field.persist) {
+                        this.writeValue(data, field, record);
+                    }
+                }
+            }
         }
-        if (!data._rev) {
-            delete data._rev;
+        if (isPhantom) {
+            if (clientIdProperty && operation && operation.records.length > 1) {
+                // include clientId for phantom records, if multiple records are being written to the server in one operation.
+                // The server can then return the clientId with each record so the operation can match the server records with the client records
+                data[clientIdProperty] = record.internalId;
+            }
+        } else if (this.writeRecordId) {
+            // Make sure that if a mapping is in place the mapped id name is used instead of the default field name.
+            mappedIdProperty = fields.get(record.idProperty)[this.nameProperty] || record.idProperty;
+            data[mappedIdProperty] = record.getId();
         }
-    
-        data.type = Ext.getClassName(record);
-    
+
         return data;
     }
 });
